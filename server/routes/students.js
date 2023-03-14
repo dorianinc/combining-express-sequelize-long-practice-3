@@ -13,13 +13,13 @@ router.get("/", async (req, res, next) => {
   // Phase 2A: Use query params for page & size
   // Your code here
   let { size, page, firstName, lastName, lefty } = req.query;
-  if (!size) size = 5;
-  if (!page) page = 1;
+  if (!size) size = 0;
+  if (!page) page = 0;
   page = parseInt(page);
   size = parseInt(size);
-  console.log("size =>", size)
+  console.log("size =>", size);
   if (page < 0 || size < 0 || isNaN(size)) {
-    errorResult.count = (await Student.count())
+    errorResult.count = await Student.count();
     errorResult.errors.push("Requires valid page and size params");
   } else if (page === 0 && size === 0) {
     page = 1;
@@ -42,34 +42,40 @@ router.get("/", async (req, res, next) => {
   // Phase 4: Student Search Filters
   const where = {};
 
-        // firstName filter:
-        //     If the firstName query parameter exists, set the firstName query
-        //         filter to find a similar match to the firstName query parameter.
-        //     For example, if firstName query parameter is 'C', then the
-        //         query should match with students whose firstName is 'Cam' or
-        //         'Royce'.
-            if(firstName) {
-                where.firstName = {
-                    [Op.like]: `${firstName}`
-                }
-            }
-        // lastName filter: (similar to firstName)
-        //     If the lastName query parameter exists, set the lastName query
-        //         filter to find a similar match to the lastName query parameter.
-        //     For example, if lastName query parameter is 'Al', then the
-        //         query should match with students whose lastName has 'Alfonsi' or
-        //         'Palazzo'.
+  // firstName filter:
+  //     If the firstName query parameter exists, set the firstName query
+  //         filter to find a similar match to the firstName query parameter.
+  //     For example, if firstName query parameter is 'C', then the
+  //         query should match with students whose firstName is 'Cam' or
+  //         'Royce'.
+  if (firstName) {
+    where.firstName = {
+      [Op.like]: `%${firstName}%`,
+    };
+  }
+  // lastName filter: (similar to firstName)
+  //     If the lastName query parameter exists, set the lastName query
+  //         filter to find a similar match to the lastName query parameter.
+  //     For example, if lastName query parameter is 'Al', then the
+  //         query should match with students whose lastName has 'Alfonsi' or
+  //         'Palazzo'.
+  if (lastName) {
+    where.lastName = {
+      [Op.like]: `%${lastName}%`,
+    };
+  }
+  // lefty filter:
+  //     If the lefty query parameter is a string of 'true' or 'false', set
+  //         the leftHanded query filter to a boolean of true or false
+  //     If the lefty query parameter is neither of those, add an error
+  //         message of 'Lefty should be either true or false' to
+  //         errorResult.errors
 
-        // lefty filter:
-        //     If the lefty query parameter is a string of 'true' or 'false', set
-        //         the leftHanded query filter to a boolean of true or false
-        //     If the lefty query parameter is neither of those, add an error
-        //         message of 'Lefty should be either true or false' to
-        //         errorResult.errors
-    
-
-
-  // Your code here
+  if (lefty) {
+    if(lefty === "true") where.leftHanded = true
+    else where.leftHanded = false
+  }
+  
   // Phase 2C: Handle invalid params with "Bad Request" response
   if (errorResult.errors.length) {
     return res.json(errorResult);
@@ -95,7 +101,7 @@ router.get("/", async (req, res, next) => {
   // Phase 3A: Include total number of results returned from the query without
   // limits and offsets as a property of count on the result
   // Note: This should be a new query
-  result.count = (await Student.count()) - size;
+  //   result.count = (await Student.count()) - size;
   result.pageCount = Math.ceil((await Student.count()) / size);
   result.rows = await Student.findAll({
     attributes: ["id", "firstName", "lastName", "leftHanded"],
@@ -103,9 +109,10 @@ router.get("/", async (req, res, next) => {
     order: [["lastname"], ["firstName"]],
     ...pagination,
   });
-
-  // if(page === 0 && size /)
+  result.pageCount = Math.ceil((await Student.count()) / size);
+  result.count = result.rows.length;
   result.page = page;
+
   // Phase 2E: Include the page number as a key of page in the response data
   // In the special case (page=0, size=0) that returns all students, set
   // page to 1
