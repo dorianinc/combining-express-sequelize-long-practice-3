@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import model(s)
-const { Classroom } = require('../db/models');
+const { sequelize, Classroom, Supplies, StudentClassroom } = require('../db/models');
 const { Op } = require('sequelize');
 
 // List of classrooms
@@ -32,7 +32,7 @@ router.get('/', async (req, res, next) => {
                     the studentLimit query parameter to equal the number
                 But if the studentLimit query parameter is NOT an integer, add
                     an error message of 'Student Limit should be a integer' to
-                    errorResult.errors 
+                    errorResult.errors
     */
     const where = {};
 
@@ -73,10 +73,41 @@ router.get('/:id', async (req, res, next) => {
         // Phase 5C: Calculate if the classroom is overloaded by comparing the
             // studentLimit of the classroom to the number of students in the
             // classroom
-        // Optional Phase 5D: Calculate the average grade of the classroom 
+        // Optional Phase 5D: Calculate the average grade of the classroom
     // Your code here
+    let aggregate = {}
+    let studentClassroom = await StudentClassroom.findAll(
+        {attributes: {
+            include:[
+                [sequelize.fn('AVG', sequelize.col('grade')), 'gradeAvg']
+            ]
 
-    res.json(classroom);
+        }, raw: true}
+    )
+    console.log(studentClassroom, 'gradeeesss!!!')
+    aggregate.supplyCount = await classroom.countSupplies()
+    aggregate.studentCount = await classroom.countStudents()
+    let something = await classroom.getStudentClassrooms()
+    // let something = await Classroom.sum('grade')
+    // console.log(something)
+    let totalgrade =0
+    for (let i = 0; i < something.length; i++) {
+        const element = something[i].dataValues.grade;
+        totalgrade+= element
+
+    }
+    console.log(totalgrade)
+    if(aggregate.studentCount > classroom.studentLimit){
+        aggregate.overloaded = true
+    } else {
+        aggregate.overloaded = false
+    }
+    // console.log('of classroom', classroom instanceof Classroom)
+    // .toJSON() converts sequelize model instance into a javascript object
+    let result = {
+        ...classroom.toJSON(), ...aggregate
+    }
+    res.json(result);
 });
 
 // Export class - DO NOT MODIFY
