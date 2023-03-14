@@ -12,8 +12,27 @@ router.get('/', async (req, res, next) => {
 
     // Phase 2A: Use query params for page & size
     // Your code here
+    let {size, page} = req.query
+    if(!size) size = 5;
+    if(!page) page = 1;
+    page = parseInt(page)
+    size = parseInt(size)
+    if(page < 0 || size < 0) {
+        errorResult.errors.push('Requires valid page and size params')
 
-    // Phase 2B: Calculate limit and offset
+    } else if (page === 0 && size === 0){
+        page = 1
+        Student.findAll()
+    }
+
+        const offset = size * (page - 1)
+        let pagination = {}
+        if(page >= 1 && size >= 1){
+            pagination.limit = size
+            pagination.offset = offset
+        }
+       // Phase 2B: Calculate limit and offset
+
     // Phase 2B (optional): Special case to return all students (page=0, size=0)
     // Phase 2B: Add an error message to errorResult.errors of
         // 'Requires valid page and size params' when page or size is invalid
@@ -45,9 +64,10 @@ router.get('/', async (req, res, next) => {
     const where = {};
 
     // Your code here
-
-
     // Phase 2C: Handle invalid params with "Bad Request" response
+    if(errorResult.errors.length){
+        return res.json(errorResult.errors)
+    }
     // Phase 3C: Include total student count in the response even if params were
         // invalid
         /*
@@ -73,9 +93,13 @@ router.get('/', async (req, res, next) => {
     result.rows = await Student.findAll({
         attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
         where,
-        order: [["lastname"], ["firstName"]]
+        order: [["lastname"], ["firstName"]],
+        ...pagination
     });
 
+
+    // if(page === 0 && size /)
+    result.page = page
     // Phase 2E: Include the page number as a key of page in the response data
         // In the special case (page=0, size=0) that returns all students, set
             // page to 1
